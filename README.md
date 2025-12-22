@@ -17,6 +17,7 @@ This approach leverages the strengths of different AI models and produces higher
 
 ## Features
 
+### Core Features
 - **Multi-Model Collaboration**: Combine Claude Opus (worker) with ChatGPT/GPT-4 (critic)
 - **Configurable Iterations**: Set maximum number of refinement cycles (default: 2)
 - **Early Termination**: Stops when critic approves the work
@@ -26,6 +27,30 @@ This approach leverages the strengths of different AI models and produces higher
 - **Flexible Configuration**: Use environment variables or pass API keys directly
 - **Command-Line Interface**: Easy to use from terminal
 - **Python API**: Integrate into your own applications
+
+### Enhanced Version (`capl_enhanced.py`) - Advanced Critical Thinking
+
+The enhanced version adds intelligent evaluation capabilities:
+
+**Worker AI Critical Evaluation:**
+- **Agency & Judgment**: Worker doesn't blindly follow feedback - it critically evaluates whether criticism is valid
+- **Defend Good Work**: Can reject incorrect or misguided criticism with explanations
+- **Selective Incorporation**: Accepts valid suggestions while explaining why it rejects others
+- **Transparent Reasoning**: Includes "Response to Critic" sections explaining decisions
+
+**Critic AI Fact-Checking:**
+- **Verification Capability**: Critic can identify claims that need fact-checking
+- **Web Search Integration**: Framework for searching information to verify facts (extensible)
+- **Uncertainty Acknowledgment**: Critic states when it needs more information
+- **Evidence-Based Review**: Grounds criticism in verifiable facts when possible
+
+**Why This Matters:**
+- Not all criticism is valid - the worker should have agency to evaluate it
+- Prevents quality degradation from incorrect feedback
+- Creates more robust, defensible outputs
+- Mirrors real collaborative processes where both parties think critically
+
+See `example_enhanced_comparison.py` for demonstrations of these capabilities.
 
 ## Installation
 
@@ -99,8 +124,51 @@ print(f"Iterations: {result['total_iterations']}")
 print(f"Final work: {result['final_work']}")
 ```
 
+### Enhanced Version Usage (With Critical Thinking)
+
+Use `capl_enhanced.py` for tasks requiring critical evaluation:
+
+**Command Line:**
+```bash
+# Use enhanced version with critical evaluation
+python capl_enhanced.py "Calculate the gravitational constant and explain its significance"
+
+# With options
+python capl_enhanced.py "Explain blockchain technology" --iterations 3 --save
+```
+
+**Python API:**
+```python
+from capl_enhanced import create_capl_enhanced
+
+# Create enhanced CAPL instance
+capl = create_capl_enhanced(
+    max_iterations=2,
+    enable_search=True  # Enable fact-checking capability
+)
+
+# Run with critical thinking enabled
+prompt = "What is the speed of light and why is it constant?"
+result = capl.run(prompt, verbose=True)
+
+# The worker will:
+# - Critically evaluate critic's feedback
+# - Defend correct information if critic is wrong
+# - Explain what feedback was accepted/rejected
+
+# The critic will:
+# - Identify claims that need verification
+# - Request searches for fact-checking (when implemented)
+# - Provide evidence-based criticism
+```
+
+**When to use Enhanced vs Basic:**
+- **Use Enhanced** for: Factual tasks, controversial topics, code review, complex analyses
+- **Use Basic** for: Simple tasks, creative writing, brainstorming, exploratory work
+
 ## Examples
 
+### Basic CAPL Examples
 See `example_usage.py` for comprehensive examples including:
 
 - Basic usage with environment variables
@@ -112,6 +180,19 @@ See `example_usage.py` for comprehensive examples including:
 Run examples:
 ```bash
 python example_usage.py
+```
+
+### Enhanced CAPL Comparison
+See `example_enhanced_comparison.py` to understand the differences:
+
+- Side-by-side comparison of basic vs enhanced
+- Demonstrations of critical thinking in action
+- Scenarios where worker defends against invalid criticism
+- Examples of critic fact-checking
+
+Run comparison:
+```bash
+python example_enhanced_comparison.py
 ```
 
 ## How It Works
