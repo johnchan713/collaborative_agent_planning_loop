@@ -52,15 +52,59 @@ The enhanced version adds intelligent evaluation capabilities:
 
 See `example_enhanced_comparison.py` for demonstrations of these capabilities.
 
+### CLI Versions - No API Keys Required!
+
+Both basic and enhanced CAPL are also available in CLI versions that use command-line tools instead of API SDKs:
+
+**CLI Version Features:**
+- **No API Key Management**: Uses your existing CLI authentication (claude CLI, openai CLI)
+- **Subprocess Control**: Python orchestrates CLI tools via subprocess
+- **Flexible Commands**: Configure custom CLI commands to match your setup
+- **Same Capabilities**: All CAPL features work the same way
+
+**Available CLI Scripts:**
+- `capl_cli.py` - Basic CAPL using CLI tools
+- `capl_enhanced_cli.py` - Enhanced CAPL with critical thinking using CLI tools
+
+**Requirements for CLI versions:**
+- `claude` CLI tool installed and authenticated (for worker)
+- `openai` CLI tool installed and authenticated (for critic)
+- Or custom CLI wrappers that accept input via stdin/file
+
+**Usage:**
+```bash
+# Basic CLI version
+python capl_cli.py "Your task here"
+
+# Enhanced CLI version with critical thinking
+python capl_enhanced_cli.py "Your task here" --iterations 3
+
+# Custom CLI commands
+python capl_cli.py "Your task" --worker-cli "my-claude-wrapper" --critic-cli "my-gpt-wrapper"
+```
+
+**When to use CLI vs SDK versions:**
+- **Use CLI** if: You already have CLI tools set up, prefer not to manage API keys in code
+- **Use SDK** if: You want more control, need to integrate into applications, prefer direct API calls
+
 ## Installation
 
 ### Prerequisites
 
 - Python 3.8 or higher
+
+**For SDK Versions (capl.py, capl_enhanced.py):**
 - Anthropic API key (for Claude)
 - OpenAI API key (for ChatGPT/GPT-4)
 
+**For CLI Versions (capl_cli.py, capl_enhanced_cli.py):**
+- `claude` CLI tool installed and authenticated
+- `openai` CLI tool installed and authenticated
+- Or your own custom CLI wrappers
+
 ### Setup
+
+#### Option 1: SDK Version Setup (Using API Keys)
 
 1. Clone this repository:
 ```bash
@@ -85,9 +129,62 @@ ANTHROPIC_API_KEY=your_anthropic_api_key_here
 OPENAI_API_KEY=your_openai_api_key_here
 ```
 
+#### Option 2: CLI Version Setup (No API Keys)
+
+1. Clone this repository:
+```bash
+git clone https://github.com/yourusername/collaborative_agent_planning_loop.git
+cd collaborative_agent_planning_loop
+```
+
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+3. Install and configure CLI tools:
+
+**For Claude CLI:**
+```bash
+# Install claude CLI (check official Anthropic docs for latest instructions)
+# Example installation:
+npm install -g @anthropic-ai/claude-cli
+# or
+pip install claude-cli
+
+# Authenticate
+claude auth login
+```
+
+**For OpenAI CLI:**
+```bash
+# Install openai CLI
+pip install openai
+
+# Set up authentication
+export OPENAI_API_KEY=your_api_key_here
+# or configure via: openai auth login
+```
+
+**Alternative: Custom CLI Wrappers**
+
+You can use your own wrapper scripts:
+```bash
+# Example: Create a wrapper for Claude
+cat > my-claude-wrapper <<'EOF'
+#!/bin/bash
+# Your custom logic here
+claude-desktop < "$1"
+EOF
+chmod +x my-claude-wrapper
+
+# Use it with CAPL
+python capl_cli.py "task" --worker-cli "./my-claude-wrapper"
+```
+
 ## Quick Start
 
-### Command Line Usage
+### Command Line Usage (SDK Version)
 
 ```bash
 # Basic usage with 2 critic iterations (default)
@@ -101,6 +198,29 @@ python capl.py "Design a REST API for a blog" --save
 
 # Use different models
 python capl.py "Write a poem about AI" --worker-model claude-opus-4-5-20251101 --critic-model gpt-4o
+```
+
+### Command Line Usage (CLI Version - No API Keys)
+
+```bash
+# Basic CLI version - uses claude and openai CLI tools
+python capl_cli.py "Write a Python function to calculate prime numbers"
+
+# Enhanced CLI version with critical thinking
+python capl_enhanced_cli.py "Explain quantum computing" --iterations 3
+
+# Save session results
+python capl_cli.py "Design a REST API for a blog" --save
+
+# Use custom CLI commands
+python capl_cli.py "Your task" --worker-cli "my-claude-wrapper" --critic-cli "my-gpt-wrapper"
+
+# Enhanced with custom CLIs
+python capl_enhanced_cli.py "Complex analysis task" \
+  --worker-cli "/path/to/claude" \
+  --critic-cli "/path/to/openai" \
+  --iterations 3 \
+  --save
 ```
 
 ### Python API Usage
