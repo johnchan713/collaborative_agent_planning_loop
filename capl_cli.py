@@ -36,6 +36,9 @@ def run_cli_with_tty(command: list, input_text: str, timeout: int = 120) -> subp
     """
     if HAS_PTY and sys.platform != 'win32':
         # Use pty for Unix systems
+        import fcntl
+        import time
+
         master, slave = pty.openpty()
 
         try:
@@ -44,36 +47,81 @@ def run_cli_with_tty(command: list, input_text: str, timeout: int = 120) -> subp
                 stdin=slave,
                 stdout=slave,
                 stderr=subprocess.PIPE,
-                text=True,
+                text=False,  # Use bytes mode
                 close_fds=True
             )
 
             os.close(slave)
 
-            # Write input
+            # Write input and signal EOF
             os.write(master, input_text.encode())
+
+            # Set master to non-blocking
+            import fcntl
+            flags = fcntl.fcntl(master, fcntl.F_GETFL)
+            fcntl.fcntl(master, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+            # Read output from master
+            output = b""
+            start_time = time.time()
+
+            while True:
+                if time.time() - start_time > timeout:
+                    process.kill()
+                    raise RuntimeError(f"Command timed out after {timeout} seconds")
+
+                try:
+                    chunk = os.read(master, 4096)
+                    if not chunk:
+                        break
+                    output += chunk
+                except OSError as e:
+                    # EAGAIN means no data available yet
+                    if e.errno == 11:  # EAGAIN
+                        # Check if process is still running
+                        if process.poll() is not None:
+                            # Process ended, try one more read
+                            try:
+                                chunk = os.read(master, 4096)
+                                output += chunk
+                            except:
+                                pass
+                            break
+                        time.sleep(0.1)
+                    else:
+                        break
+
             os.close(master)
 
-            # Read output with timeout
+            # Wait for process to finish
             try:
-                stdout, stderr = process.communicate(timeout=timeout)
+                _, stderr = process.communicate(timeout=5)
             except subprocess.TimeoutExpired:
                 process.kill()
-                raise RuntimeError(f"Command timed out after {timeout} seconds")
+                _, stderr = process.communicate()
 
             # Create result object
             class Result:
                 def __init__(self, stdout, stderr, returncode):
-                    self.stdout = stdout if stdout else ""
+                    self.stdout = stdout
                     self.stderr = stderr if stderr else ""
                     self.returncode = returncode
 
-            return Result(stdout, stderr, process.returncode)
+            return Result(
+                output.decode('utf-8', errors='replace').strip(),
+                stderr.decode('utf-8', errors='replace') if stderr else "",
+                process.returncode
+            )
 
         except Exception as e:
             if 'master' in locals():
                 try:
                     os.close(master)
+                except:
+                    pass
+            if 'process' in locals():
+                try:
+                    process.kill()
                 except:
                     pass
             raise
