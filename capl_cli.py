@@ -1,18 +1,91 @@
 #!/usr/bin/env python3
 """
 CAPL CLI Version - Using command-line tools instead of API SDKs
-Works with claude CLI and openai CLI (or custom CLI wrappers)
+Works with claude CLI and codex CLI (or custom CLI wrappers)
 """
 
 import subprocess
 import os
+import sys
 from typing import Optional, Dict, List, Tuple
 from datetime import datetime
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
-import json
 import tempfile
+
+# Try to import pty for TTY support (Unix only)
+try:
+    import pty
+    HAS_PTY = True
+except ImportError:
+    HAS_PTY = False
+
+
+def run_cli_with_tty(command: list, input_text: str, timeout: int = 120) -> subprocess.CompletedProcess:
+    """
+    Run a CLI command with TTY support for commands that require it.
+
+    Args:
+        command: Command and arguments as a list
+        input_text: Text to send to stdin
+        timeout: Timeout in seconds
+
+    Returns:
+        CompletedProcess-like object with stdout, stderr, returncode
+    """
+    if HAS_PTY and sys.platform != 'win32':
+        # Use pty for Unix systems
+        master, slave = pty.openpty()
+
+        try:
+            process = subprocess.Popen(
+                command,
+                stdin=slave,
+                stdout=slave,
+                stderr=subprocess.PIPE,
+                text=True,
+                close_fds=True
+            )
+
+            os.close(slave)
+
+            # Write input
+            os.write(master, input_text.encode())
+            os.close(master)
+
+            # Read output with timeout
+            try:
+                stdout, stderr = process.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                raise RuntimeError(f"Command timed out after {timeout} seconds")
+
+            # Create result object
+            class Result:
+                def __init__(self, stdout, stderr, returncode):
+                    self.stdout = stdout if stdout else ""
+                    self.stderr = stderr if stderr else ""
+                    self.returncode = returncode
+
+            return Result(stdout, stderr, process.returncode)
+
+        except Exception as e:
+            if 'master' in locals():
+                try:
+                    os.close(master)
+                except:
+                    pass
+            raise
+    else:
+        # Fall back to regular subprocess for Windows or if pty unavailable
+        return subprocess.run(
+            command,
+            input=input_text,
+            capture_output=True,
+            text=True,
+            timeout=timeout
+        )
 
 
 class CAPLAgentCLI:
@@ -52,40 +125,17 @@ Please refine your work based on this feedback. Provide an improved version."""
 
 Provide a thorough and well-reasoned response."""
 
-        # Create temp file for prompt
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
-            f.write(full_prompt)
-            temp_file = f.name
-
         try:
-            # Call Claude CLI
-            # Assuming: claude < input.txt or claude --file input.txt
-            result = subprocess.run(
-                [self.cli_command, '--file', temp_file],
-                capture_output=True,
-                text=True,
-                timeout=120
-            )
-
-            if result.returncode != 0:
-                # Try alternative: piping via stdin
-                result = subprocess.run(
-                    [self.cli_command],
-                    input=full_prompt,
-                    capture_output=True,
-                    text=True,
-                    timeout=120
-                )
+            # Call Claude CLI with TTY support
+            result = run_cli_with_tty([self.cli_command], full_prompt, timeout=120)
 
             if result.returncode != 0:
                 raise RuntimeError(f"Claude CLI failed: {result.stderr}")
 
             return result.stdout.strip()
 
-        finally:
-            # Clean up temp file
-            if os.path.exists(temp_file):
-                os.unlink(temp_file)
+        except FileNotFoundError:
+            raise RuntimeError(f"Claude CLI command '{self.cli_command}' not found. Please install claude CLI or use --worker-cli to specify your CLI tool.")
 
 
 class CodexCriticAgentCLI(CAPLAgentCLI):
@@ -116,14 +166,8 @@ If the work needs improvement, start your response with "NEEDS WORK:"
 Be thorough but constructive in your criticism."""
 
         try:
-            # Call Codex CLI via stdin
-            result = subprocess.run(
-                [self.cli_command],
-                input=critique_prompt,
-                capture_output=True,
-                text=True,
-                timeout=120
-            )
+            # Call Codex CLI via stdin with TTY support
+            result = run_cli_with_tty([self.cli_command], critique_prompt, timeout=120)
 
             if result.returncode != 0:
                 raise RuntimeError(f"Codex CLI failed: {result.stderr}")
