@@ -57,7 +57,7 @@ See `example_enhanced_comparison.py` for demonstrations of these capabilities.
 Both basic and enhanced CAPL are also available in CLI versions that use command-line tools instead of API SDKs:
 
 **CLI Version Features:**
-- **No API Key Management**: Uses your existing CLI authentication (claude CLI, openai CLI)
+- **No API Key Management**: Uses your existing CLI authentication
 - **Subprocess Control**: Python orchestrates CLI tools via subprocess
 - **Flexible Commands**: Configure custom CLI commands to match your setup
 - **Same Capabilities**: All CAPL features work the same way
@@ -68,19 +68,19 @@ Both basic and enhanced CAPL are also available in CLI versions that use command
 
 **Requirements for CLI versions:**
 - `claude` CLI tool installed and authenticated (for worker)
-- `openai` CLI tool installed and authenticated (for critic)
-- Or custom CLI wrappers that accept input via stdin/file
+- `codex` CLI tool installed and authenticated (for critic)
+- Or any custom CLI tools that accept input via stdin
 
 **Usage:**
 ```bash
-# Basic CLI version
+# Basic CLI version (uses claude and codex CLIs)
 python capl_cli.py "Your task here"
 
 # Enhanced CLI version with critical thinking
 python capl_enhanced_cli.py "Your task here" --iterations 3
 
 # Custom CLI commands
-python capl_cli.py "Your task" --worker-cli "my-claude-wrapper" --critic-cli "my-gpt-wrapper"
+python capl_cli.py "Your task" --worker-cli "my-claude" --critic-cli "my-codex"
 ```
 
 **When to use CLI vs SDK versions:**
@@ -99,8 +99,8 @@ python capl_cli.py "Your task" --worker-cli "my-claude-wrapper" --critic-cli "my
 
 **For CLI Versions (capl_cli.py, capl_enhanced_cli.py):**
 - `claude` CLI tool installed and authenticated
-- `openai` CLI tool installed and authenticated
-- Or your own custom CLI wrappers
+- `codex` CLI tool installed and authenticated
+- Or your own custom CLI tools
 
 ### Setup
 
@@ -156,30 +156,27 @@ pip install claude-cli
 claude auth login
 ```
 
-**For OpenAI CLI:**
+**For Codex CLI:**
 ```bash
-# Install openai CLI
-pip install openai
+# Install codex CLI (or your preferred AI CLI tool)
+# This depends on your specific CLI tool setup
+# Make sure it accepts input via stdin
 
-# Set up authentication
-export OPENAI_API_KEY=your_api_key_here
-# or configure via: openai auth login
+# Example test:
+echo "Hello" | codex
 ```
 
-**Alternative: Custom CLI Wrappers**
+**Alternative: Custom CLI Tools**
 
-You can use your own wrapper scripts:
+You can use any CLI tool that accepts input via stdin:
 ```bash
-# Example: Create a wrapper for Claude
-cat > my-claude-wrapper <<'EOF'
-#!/bin/bash
-# Your custom logic here
-claude-desktop < "$1"
-EOF
-chmod +x my-claude-wrapper
+# Example: Test your CLI
+echo "Say hello" | your-cli-tool
 
 # Use it with CAPL
-python capl_cli.py "task" --worker-cli "./my-claude-wrapper"
+python capl_cli.py "task" \
+  --worker-cli "claude" \
+  --critic-cli "your-cli-tool"
 ```
 
 ## Quick Start
@@ -203,7 +200,7 @@ python capl.py "Write a poem about AI" --worker-model claude-opus-4-5-20251101 -
 ### Command Line Usage (CLI Version - No API Keys)
 
 ```bash
-# Basic CLI version - uses claude and openai CLI tools
+# Basic CLI version - uses claude and codex CLI tools
 python capl_cli.py "Write a Python function to calculate prime numbers"
 
 # Enhanced CLI version with critical thinking
@@ -213,12 +210,12 @@ python capl_enhanced_cli.py "Explain quantum computing" --iterations 3
 python capl_cli.py "Design a REST API for a blog" --save
 
 # Use custom CLI commands
-python capl_cli.py "Your task" --worker-cli "my-claude-wrapper" --critic-cli "my-gpt-wrapper"
+python capl_cli.py "Your task" --worker-cli "my-claude" --critic-cli "my-codex"
 
 # Enhanced with custom CLIs
 python capl_enhanced_cli.py "Complex analysis task" \
   --worker-cli "/path/to/claude" \
-  --critic-cli "/path/to/openai" \
+  --critic-cli "/path/to/codex" \
   --iterations 3 \
   --save
 ```

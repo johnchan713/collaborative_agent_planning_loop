@@ -88,14 +88,14 @@ Provide a thorough and well-reasoned response."""
                 os.unlink(temp_file)
 
 
-class ChatGPTCriticAgentCLI(CAPLAgentCLI):
-    """ChatGPT critic agent using OpenAI CLI."""
+class CodexCriticAgentCLI(CAPLAgentCLI):
+    """Codex critic agent using Codex CLI."""
 
-    def __init__(self, cli_command: str = "openai"):
+    def __init__(self, cli_command: str = "codex"):
         super().__init__(cli_command, "Critic")
 
     def generate(self, prompt: str, work: str) -> Tuple[str, bool]:
-        """Critique using OpenAI CLI."""
+        """Critique using Codex CLI."""
         critique_prompt = f"""You are a critical AI reviewer. Your job is to analyze work produced by another AI and provide constructive feedback.
 
 Original Task:
@@ -115,43 +115,26 @@ If the work needs improvement, start your response with "NEEDS WORK:"
 
 Be thorough but constructive in your criticism."""
 
-        # Create temp file for prompt
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
-            f.write(critique_prompt)
-            temp_file = f.name
-
         try:
-            # Call OpenAI CLI
-            # Assuming: openai api chat.completions.create -m gpt-4o --message "..."
+            # Call Codex CLI via stdin
             result = subprocess.run(
-                [self.cli_command, 'api', 'chat.completions.create',
-                 '-m', 'gpt-4o', '--file', temp_file],
+                [self.cli_command],
+                input=critique_prompt,
                 capture_output=True,
                 text=True,
                 timeout=120
             )
 
             if result.returncode != 0:
-                # Try simpler command
-                result = subprocess.run(
-                    [self.cli_command, 'chat', '--model', 'gpt-4o'],
-                    input=critique_prompt,
-                    capture_output=True,
-                    text=True,
-                    timeout=120
-                )
-
-            if result.returncode != 0:
-                raise RuntimeError(f"OpenAI CLI failed: {result.stderr}")
+                raise RuntimeError(f"Codex CLI failed: {result.stderr}")
 
             feedback = result.stdout.strip()
             is_approved = feedback.startswith("APPROVED:")
 
             return feedback, is_approved
 
-        finally:
-            if os.path.exists(temp_file):
-                os.unlink(temp_file)
+        except FileNotFoundError:
+            raise RuntimeError(f"Codex CLI command '{self.cli_command}' not found. Please install codex CLI or use --critic-cli to specify your CLI tool.")
 
 
 class CAPLCLI:
@@ -296,7 +279,7 @@ class CAPLCLI:
 def create_capl_cli(
     max_iterations: int = 2,
     worker_cli: str = "claude",
-    critic_cli: str = "openai"
+    critic_cli: str = "codex"
 ) -> CAPLCLI:
     """
     Create a CAPL instance using CLI tools.
@@ -304,13 +287,13 @@ def create_capl_cli(
     Args:
         max_iterations: Maximum number of critic iterations
         worker_cli: Command for worker CLI (default: "claude")
-        critic_cli: Command for critic CLI (default: "openai")
+        critic_cli: Command for critic CLI (default: "codex")
 
     Returns:
         CAPLCLI instance
     """
     worker = ClaudeWorkerAgentCLI(worker_cli)
-    critic = ChatGPTCriticAgentCLI(critic_cli)
+    critic = CodexCriticAgentCLI(critic_cli)
 
     return CAPLCLI(worker, critic, max_iterations=max_iterations)
 
@@ -323,7 +306,7 @@ if __name__ == "__main__":
     parser.add_argument("--iterations", type=int, default=2, help="Max iterations (default: 2)")
     parser.add_argument("--save", action="store_true", help="Save session results")
     parser.add_argument("--worker-cli", default="claude", help="Worker CLI command (default: claude)")
-    parser.add_argument("--critic-cli", default="openai", help="Critic CLI command (default: openai)")
+    parser.add_argument("--critic-cli", default="codex", help="Critic CLI command (default: codex)")
 
     args = parser.parse_args()
 
