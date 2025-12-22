@@ -110,15 +110,15 @@ Provide a thorough, well-reasoned, and accurate response."""
                 os.unlink(temp_file)
 
 
-class ChatGPTCriticAgentEnhancedCLI(CAPLAgentCLI):
-    """Enhanced ChatGPT critic agent using CLI with fact-checking capability."""
+class CodexCriticAgentEnhancedCLI(CAPLAgentCLI):
+    """Enhanced Codex critic agent using CLI with fact-checking capability."""
 
-    def __init__(self, cli_command: str = "openai", enable_search: bool = True):
+    def __init__(self, cli_command: str = "codex", enable_search: bool = True):
         super().__init__(cli_command, "Critic")
         self.enable_search = enable_search
 
     def generate(self, prompt: str, work: str) -> Tuple[str, bool, Optional[str]]:
-        """Critique with fact-checking using OpenAI CLI."""
+        """Critique with fact-checking using Codex CLI."""
         critique_prompt = f"""You are a critical AI reviewer with high standards. Your job is to analyze work produced by another AI and provide constructive, well-reasoned feedback.
 
 ORIGINAL TASK:
@@ -155,64 +155,31 @@ Provide a thorough critique that includes:
 
 Be thorough, fair, and constructive."""
 
-        feedback = self._call_cli(critique_prompt)
-        is_approved = feedback.startswith("APPROVED:")
-        needs_verification = feedback.startswith("NEEDS VERIFICATION:")
-
-        search_summary = None
-        if needs_verification and self.enable_search:
-            search_summary = "[Search capability framework ready - implement web search as needed]"
-
-        return feedback, is_approved, search_summary
-
-    def _call_cli(self, prompt: str) -> str:
-        """Call OpenAI CLI or wrapper with prompt."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
-            f.write(prompt)
-            temp_file = f.name
-
         try:
-            # Method 1: Try openai api chat.completions.create with correct syntax
+            # Call Codex CLI via stdin
             result = subprocess.run(
-                [self.cli_command, 'api', 'chat.completions.create',
-                 '-m', 'gpt-4o', '-g', 'user', prompt],
+                [self.cli_command],
+                input=critique_prompt,
                 capture_output=True,
                 text=True,
                 timeout=180
             )
 
             if result.returncode != 0:
-                # Method 2: Try reading from file (for custom wrappers)
-                result = subprocess.run(
-                    [self.cli_command, temp_file],
-                    capture_output=True,
-                    text=True,
-                    timeout=180
-                )
+                raise RuntimeError(f"Codex CLI failed: {result.stderr}")
 
-            if result.returncode != 0:
-                # Method 3: Try piping via stdin (for custom wrappers)
-                result = subprocess.run(
-                    [self.cli_command],
-                    input=prompt,
-                    capture_output=True,
-                    text=True,
-                    timeout=180
-                )
+            feedback = result.stdout.strip()
+            is_approved = feedback.startswith("APPROVED:")
+            needs_verification = feedback.startswith("NEEDS VERIFICATION:")
 
-            if result.returncode != 0:
-                error_msg = f"OpenAI CLI failed: {result.stderr}\n\n"
-                error_msg += "Hint: The OpenAI CLI has limited functionality. Consider:\n"
-                error_msg += "1. Using the SDK version: capl_enhanced.py\n"
-                error_msg += "2. Creating a wrapper script (see cli_wrappers/ directory)\n"
-                error_msg += "3. Use --critic-cli to specify your own wrapper script"
-                raise RuntimeError(error_msg)
+            search_summary = None
+            if needs_verification and self.enable_search:
+                search_summary = "[Search capability framework ready - implement web search as needed]"
 
-            return result.stdout.strip()
+            return feedback, is_approved, search_summary
 
-        finally:
-            if os.path.exists(temp_file):
-                os.unlink(temp_file)
+        except FileNotFoundError:
+            raise RuntimeError(f"Codex CLI command '{self.cli_command}' not found. Please install codex CLI or use --critic-cli to specify your CLI tool.")
 
 
 class CAPLEnhancedCLI:
@@ -269,7 +236,7 @@ class CAPLEnhancedCLI:
             self.console.print(f"\n[bold blue]>>> Critic AI: Reviewing work via CLI (Iteration {iteration}/{self.max_iterations})...[/bold blue]")
 
             # Get critique
-            if isinstance(self.critic, ChatGPTCriticAgentEnhancedCLI):
+            if isinstance(self.critic, CodexCriticAgentEnhancedCLI):
                 feedback, is_approved, search_summary = self.critic.generate(prompt, current_work)
                 if search_summary and verbose:
                     self.console.print(f"[dim]{search_summary}[/dim]")
@@ -377,7 +344,7 @@ class CAPLEnhancedCLI:
 def create_capl_enhanced_cli(
     max_iterations: int = 2,
     worker_cli: str = "claude",
-    critic_cli: str = "openai",
+    critic_cli: str = "codex",
     enable_search: bool = True
 ) -> CAPLEnhancedCLI:
     """
@@ -386,14 +353,14 @@ def create_capl_enhanced_cli(
     Args:
         max_iterations: Maximum number of critic iterations
         worker_cli: Command for worker CLI (default: "claude")
-        critic_cli: Command for critic CLI (default: "openai")
+        critic_cli: Command for critic CLI (default: "codex")
         enable_search: Enable fact-checking capability
 
     Returns:
         CAPLEnhancedCLI instance
     """
     worker = ClaudeWorkerAgentEnhancedCLI(worker_cli)
-    critic = ChatGPTCriticAgentEnhancedCLI(critic_cli, enable_search)
+    critic = CodexCriticAgentEnhancedCLI(critic_cli, enable_search)
 
     return CAPLEnhancedCLI(worker, critic, max_iterations=max_iterations)
 
@@ -406,7 +373,7 @@ if __name__ == "__main__":
     parser.add_argument("--iterations", type=int, default=2, help="Max iterations (default: 2)")
     parser.add_argument("--save", action="store_true", help="Save session results")
     parser.add_argument("--worker-cli", default="claude", help="Worker CLI command (default: claude)")
-    parser.add_argument("--critic-cli", default="openai", help="Critic CLI command (default: openai)")
+    parser.add_argument("--critic-cli", default="codex", help="Critic CLI command (default: codex)")
     parser.add_argument("--no-search", action="store_true", help="Disable web search")
 
     args = parser.parse_args()
