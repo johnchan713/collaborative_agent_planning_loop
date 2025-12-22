@@ -95,7 +95,7 @@ class ChatGPTCriticAgentCLI(CAPLAgentCLI):
         super().__init__(cli_command, "Critic")
 
     def generate(self, prompt: str, work: str) -> Tuple[str, bool]:
-        """Critique using OpenAI CLI."""
+        """Critique using OpenAI CLI or wrapper."""
         critique_prompt = f"""You are a critical AI reviewer. Your job is to analyze work produced by another AI and provide constructive feedback.
 
 Original Task:
@@ -121,20 +121,28 @@ Be thorough but constructive in your criticism."""
             temp_file = f.name
 
         try:
-            # Call OpenAI CLI
-            # Assuming: openai api chat.completions.create -m gpt-4o --message "..."
+            # Method 1: Try openai api chat.completions.create with correct syntax
             result = subprocess.run(
                 [self.cli_command, 'api', 'chat.completions.create',
-                 '-m', 'gpt-4o', '--file', temp_file],
+                 '-m', 'gpt-4o', '-g', 'user', critique_prompt],
                 capture_output=True,
                 text=True,
                 timeout=120
             )
 
             if result.returncode != 0:
-                # Try simpler command
+                # Method 2: Try reading from file (for custom wrappers)
                 result = subprocess.run(
-                    [self.cli_command, 'chat', '--model', 'gpt-4o'],
+                    [self.cli_command, temp_file],
+                    capture_output=True,
+                    text=True,
+                    timeout=120
+                )
+
+            if result.returncode != 0:
+                # Method 3: Try piping via stdin (for custom wrappers)
+                result = subprocess.run(
+                    [self.cli_command],
                     input=critique_prompt,
                     capture_output=True,
                     text=True,
@@ -142,7 +150,12 @@ Be thorough but constructive in your criticism."""
                 )
 
             if result.returncode != 0:
-                raise RuntimeError(f"OpenAI CLI failed: {result.stderr}")
+                error_msg = f"OpenAI CLI failed: {result.stderr}\n\n"
+                error_msg += "Hint: The OpenAI CLI has limited functionality. Consider:\n"
+                error_msg += "1. Using the SDK version: capl.py\n"
+                error_msg += "2. Creating a wrapper script (see cli_wrappers/ directory)\n"
+                error_msg += "3. Use --critic-cli to specify your own wrapper script"
+                raise RuntimeError(error_msg)
 
             feedback = result.stdout.strip()
             is_approved = feedback.startswith("APPROVED:")

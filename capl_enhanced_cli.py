@@ -166,25 +166,34 @@ Be thorough, fair, and constructive."""
         return feedback, is_approved, search_summary
 
     def _call_cli(self, prompt: str) -> str:
-        """Call OpenAI CLI with prompt."""
+        """Call OpenAI CLI or wrapper with prompt."""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
             f.write(prompt)
             temp_file = f.name
 
         try:
-            # Try: openai api chat.completions.create -m gpt-4o --file input.txt
+            # Method 1: Try openai api chat.completions.create with correct syntax
             result = subprocess.run(
                 [self.cli_command, 'api', 'chat.completions.create',
-                 '-m', 'gpt-4o', '--file', temp_file],
+                 '-m', 'gpt-4o', '-g', 'user', prompt],
                 capture_output=True,
                 text=True,
                 timeout=180
             )
 
             if result.returncode != 0:
-                # Try simpler command
+                # Method 2: Try reading from file (for custom wrappers)
                 result = subprocess.run(
-                    [self.cli_command, 'chat', '--model', 'gpt-4o'],
+                    [self.cli_command, temp_file],
+                    capture_output=True,
+                    text=True,
+                    timeout=180
+                )
+
+            if result.returncode != 0:
+                # Method 3: Try piping via stdin (for custom wrappers)
+                result = subprocess.run(
+                    [self.cli_command],
                     input=prompt,
                     capture_output=True,
                     text=True,
@@ -192,7 +201,12 @@ Be thorough, fair, and constructive."""
                 )
 
             if result.returncode != 0:
-                raise RuntimeError(f"OpenAI CLI failed: {result.stderr}")
+                error_msg = f"OpenAI CLI failed: {result.stderr}\n\n"
+                error_msg += "Hint: The OpenAI CLI has limited functionality. Consider:\n"
+                error_msg += "1. Using the SDK version: capl_enhanced.py\n"
+                error_msg += "2. Creating a wrapper script (see cli_wrappers/ directory)\n"
+                error_msg += "3. Use --critic-cli to specify your own wrapper script"
+                raise RuntimeError(error_msg)
 
             return result.stdout.strip()
 
