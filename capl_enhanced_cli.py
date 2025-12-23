@@ -6,12 +6,117 @@ Works with claude CLI and openai CLI (or custom CLI wrappers)
 
 import subprocess
 import os
+import sys
 from typing import Optional, Dict, List, Tuple
 from datetime import datetime
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
 import tempfile
+
+# Try to import pty for TTY support (Unix only)
+try:
+    import pty
+    HAS_PTY = True
+except ImportError:
+    HAS_PTY = False
+
+
+def run_with_pty(command: list, input_text: str, timeout: int = 180):
+    """Run command with pseudo-TTY for tools that require it."""
+    if not HAS_PTY or sys.platform == 'win32':
+        # Fallback to regular subprocess
+        return subprocess.run(
+            command,
+            input=input_text,
+            capture_output=True,
+            text=True,
+            timeout=timeout
+        )
+
+    import fcntl
+    import time
+
+    master, slave = pty.openpty()
+
+    try:
+        process = subprocess.Popen(
+            command,
+            stdin=slave,
+            stdout=slave,
+            stderr=subprocess.PIPE,
+            text=False,
+            close_fds=True
+        )
+
+        os.close(slave)
+
+        # Write input
+        os.write(master, input_text.encode())
+
+        # Set non-blocking
+        flags = fcntl.fcntl(master, fcntl.F_GETFL)
+        fcntl.fcntl(master, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+        # Read output
+        output = b""
+        start_time = time.time()
+
+        while True:
+            if time.time() - start_time > timeout:
+                process.kill()
+                raise RuntimeError(f"Command timed out after {timeout} seconds")
+
+            try:
+                chunk = os.read(master, 4096)
+                if not chunk:
+                    break
+                output += chunk
+            except OSError as e:
+                if e.errno == 11:  # EAGAIN
+                    if process.poll() is not None:
+                        try:
+                            chunk = os.read(master, 4096)
+                            output += chunk
+                        except:
+                            pass
+                        break
+                    time.sleep(0.1)
+                else:
+                    break
+
+        os.close(master)
+
+        try:
+            _, stderr = process.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            _, stderr = process.communicate()
+
+        class Result:
+            def __init__(self, stdout, stderr, returncode):
+                self.stdout = stdout
+                self.stderr = stderr if stderr else ""
+                self.returncode = returncode
+
+        return Result(
+            output.decode('utf-8', errors='replace').strip(),
+            stderr.decode('utf-8', errors='replace') if stderr else "",
+            process.returncode
+        )
+
+    except Exception as e:
+        if 'master' in locals():
+            try:
+                os.close(master)
+            except:
+                pass
+        if 'process' in locals():
+            try:
+                process.kill()
+            except:
+                pass
+        raise
 
 
 class CAPLAgentCLI:
@@ -156,14 +261,8 @@ Provide a thorough critique that includes:
 Be thorough, fair, and constructive."""
 
         try:
-            # Call Codex CLI via stdin
-            result = subprocess.run(
-                [self.cli_command],
-                input=critique_prompt,
-                capture_output=True,
-                text=True,
-                timeout=180
-            )
+            # Call Codex CLI with TTY support (codex requires terminal)
+            result = run_with_pty([self.cli_command], critique_prompt, timeout=180)
 
             if result.returncode != 0:
                 raise RuntimeError(f"Codex CLI failed: {result.stderr}")
