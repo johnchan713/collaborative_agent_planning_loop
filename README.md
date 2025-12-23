@@ -1,320 +1,118 @@
 # CAPL - Collaborative Agent Planning Loop
 
-**Using multiple AI models to form a critic loop to improve each other's thinking in the working process**
+**Multi-AI critic loop for improved thinking and output quality**
 
-CAPL is a Python framework that orchestrates multiple AI models in a collaborative refinement loop. One model acts as a "worker" to complete tasks, while another acts as a "critic" to review and provide feedback, enabling iterative improvement of AI-generated outputs.
+CAPL orchestrates multiple AI models in a collaborative refinement loop. Claude Opus acts as a "worker" to complete tasks, while ChatGPT/Codex acts as a "critic" to review and provide feedback, enabling iterative improvement through multiple rounds of refinement.
 
 ## Overview
 
 The Collaborative Agent Planning Loop (CAPL) implements an iterative refinement process:
 
-1. **Worker Agent** (Claude Opus) generates an initial response to your prompt
-2. **Critic Agent** (ChatGPT/GPT-4) reviews the work and provides detailed feedback
-3. **Worker Agent** refines its output based on the criticism
-4. This cycle repeats for a configurable number of iterations or until the critic approves
+1. **Worker AI** (Claude) generates an initial response to your prompt
+2. **Critic AI** (Codex/ChatGPT) reviews the work and provides detailed feedback
+3. **Worker AI** critically evaluates the feedback and refines its output
+4. **Critic AI** reviews again
+5. This cycle repeats for a configurable number of iterations (default: 2)
 
-This approach leverages the strengths of different AI models and produces higher-quality, more thoughtful outputs through collaborative refinement.
+Each iteration produces progressively better results through collaborative refinement.
 
-## Features
+## Key Features
 
-### Core Features
-- **Multi-Model Collaboration**: Combine Claude Opus (worker) with ChatGPT/GPT-4 (critic)
-- **Configurable Iterations**: Set maximum number of refinement cycles (default: 2)
-- **Early Termination**: Stops when critic approves the work
-- **Rich Console Output**: Beautiful formatted output with progress tracking
-- **Session History**: Complete history of all iterations and feedback
-- **Export Results**: Save session results to Markdown files
-- **Flexible Configuration**: Use environment variables or pass API keys directly
-- **Command-Line Interface**: Easy to use from terminal
-- **Python API**: Integrate into your own applications
+### Critical Thinking & Agency
 
-### Enhanced Version (`capl_enhanced.py`) - Advanced Critical Thinking
-
-The enhanced version adds intelligent evaluation capabilities:
-
-**Worker AI Critical Evaluation:**
-- **Agency & Judgment**: Worker doesn't blindly follow feedback - it critically evaluates whether criticism is valid
+**Worker AI Intelligence:**
+- **Critical Evaluation**: Worker doesn't blindly follow feedback - it evaluates whether criticism is valid
 - **Defend Good Work**: Can reject incorrect or misguided criticism with explanations
 - **Selective Incorporation**: Accepts valid suggestions while explaining why it rejects others
-- **Transparent Reasoning**: Includes "Response to Critic" sections explaining decisions
+- **Transparent Reasoning**: Shows its thinking process when evaluating feedback
 
-**Critic AI Fact-Checking:**
-- **Verification Capability**: Critic can identify claims that need fact-checking
-- **Web Search Integration**: Framework for searching information to verify facts (extensible)
-- **Uncertainty Acknowledgment**: Critic states when it needs more information
-- **Evidence-Based Review**: Grounds criticism in verifiable facts when possible
+**Critic AI Capabilities:**
+- **Fact-Checking**: Identifies claims that need verification
+- **Evidence-Based Review**: Provides specific, actionable feedback
+- **Constructive Criticism**: Balances what's done well with areas for improvement
 
-**Why This Matters:**
-- Not all criticism is valid - the worker should have agency to evaluate it
-- Prevents quality degradation from incorrect feedback
-- Creates more robust, defensible outputs
-- Mirrors real collaborative processes where both parties think critically
+### Technical Features
 
-See `example_enhanced_comparison.py` for demonstrations of these capabilities.
-
-### CLI Versions - No API Keys Required!
-
-Both basic and enhanced CAPL are also available in CLI versions that use command-line tools instead of API SDKs:
-
-**CLI Version Features:**
-- **No API Key Management**: Uses your existing CLI authentication
-- **Subprocess Control**: Python orchestrates CLI tools via subprocess
-- **Flexible Commands**: Configure custom CLI commands to match your setup
-- **Same Capabilities**: All CAPL features work the same way
-
-**Available CLI Scripts:**
-- `capl_cli.py` - Basic CAPL using CLI tools
-- `capl_enhanced_cli.py` - Enhanced CAPL with critical thinking using CLI tools
-
-**Requirements for CLI versions:**
-- `claude` CLI tool installed and authenticated (for worker)
-- `codex` CLI tool installed and authenticated (for critic)
-- Or any custom CLI tools that accept input via stdin
-
-**Usage:**
-```bash
-# Basic CLI version (uses claude and codex CLIs)
-python capl_cli.py "Your task here"
-
-# Enhanced CLI version with critical thinking
-python capl_enhanced_cli.py "Your task here" --iterations 3
-
-# Custom CLI commands
-python capl_cli.py "Your task" --worker-cli "my-claude" --critic-cli "my-codex"
-```
-
-**When to use CLI vs SDK versions:**
-- **Use CLI** if: You already have CLI tools set up, prefer not to manage API keys in code
-- **Use SDK** if: You want more control, need to integrate into applications, prefer direct API calls
+- **CLI-Based**: Uses `claude` and `codex` CLI tools - no API key management needed
+- **Configurable Iterations**: Set max refinement cycles (default: 2)
+- **Rich Console Output**: Beautiful formatted output with progress tracking
+- **Final Work Display**: Clear presentation of the refined final result
+- **Session History**: Complete history of all iterations and feedback
+- **Export Results**: Save sessions to Markdown files
 
 ## Installation
 
 ### Prerequisites
 
 - Python 3.8 or higher
-
-**For SDK Versions (capl.py, capl_enhanced.py):**
-- Anthropic API key (for Claude)
-- OpenAI API key (for ChatGPT/GPT-4)
-
-**For CLI Versions (capl_cli.py, capl_enhanced_cli.py):**
 - `claude` CLI tool installed and authenticated
 - `codex` CLI tool installed and authenticated
-- Or your own custom CLI tools
 
 ### Setup
 
-#### Option 1: SDK Version Setup (Using API Keys)
-
 1. Clone this repository:
 ```bash
 git clone https://github.com/yourusername/collaborative_agent_planning_loop.git
 cd collaborative_agent_planning_loop
 ```
 
-2. Install dependencies:
+2. Install Python dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Configure API keys:
+3. Verify CLI tools are working:
 ```bash
-cp .env.example .env
-# Edit .env and add your API keys
+# Test claude CLI
+claude --version
+
+# Test codex CLI
+codex exec --full-auto "Say hello"
 ```
 
-Your `.env` file should look like:
-```
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-OPENAI_API_KEY=your_openai_api_key_here
-```
+**Installing CLI Tools:**
 
-#### Option 2: CLI Version Setup (No API Keys)
+For Claude CLI - check [Anthropic's official documentation](https://www.anthropic.com/)
 
-1. Clone this repository:
-```bash
-git clone https://github.com/yourusername/collaborative_agent_planning_loop.git
-cd collaborative_agent_planning_loop
-```
+For Codex CLI - check your CLI tool provider's documentation
 
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+## Usage
 
-3. Install and configure CLI tools:
-
-**For Claude CLI:**
-```bash
-# Install claude CLI (check official Anthropic docs for latest instructions)
-# Example installation:
-npm install -g @anthropic-ai/claude-cli
-# or
-pip install claude-cli
-
-# Authenticate
-claude auth login
-```
-
-**For Codex CLI:**
-```bash
-# Install codex CLI (or your preferred AI CLI tool)
-# This depends on your specific CLI tool setup
-# Make sure it accepts input via stdin
-
-# Example test:
-echo "Hello" | codex
-```
-
-**Alternative: Custom CLI Tools**
-
-You can use any CLI tool that accepts input via stdin:
-```bash
-# Example: Test your CLI
-echo "Say hello" | your-cli-tool
-
-# Use it with CAPL
-python capl_cli.py "task" \
-  --worker-cli "claude" \
-  --critic-cli "your-cli-tool"
-```
-
-## Quick Start
-
-### Command Line Usage (SDK Version)
+### Basic Usage
 
 ```bash
-# Basic usage with 2 critic iterations (default)
-python capl.py "Write a Python function to calculate prime numbers"
+# Run CAPL with default settings (2 iterations)
+python3 capl_enhanced_cli.py "Explain quantum mechanics in 100 words"
 
-# Specify number of iterations
-python capl.py "Explain quantum computing" --iterations 3
+# Specify custom number of iterations
+python3 capl_enhanced_cli.py "Write a sorting algorithm in Python" --iterations 3
 
 # Save session results to file
-python capl.py "Design a REST API for a blog" --save
-
-# Use different models
-python capl.py "Write a poem about AI" --worker-model claude-opus-4-5-20251101 --critic-model gpt-4o
-```
-
-### Command Line Usage (CLI Version - No API Keys)
-
-```bash
-# Basic CLI version - uses claude and codex CLI tools
-python capl_cli.py "Write a Python function to calculate prime numbers"
-
-# Enhanced CLI version with critical thinking
-python capl_enhanced_cli.py "Explain quantum computing" --iterations 3
-
-# Save session results
-python capl_cli.py "Design a REST API for a blog" --save
+python3 capl_enhanced_cli.py "Design a REST API" --save
 
 # Use custom CLI commands
-python capl_cli.py "Your task" --worker-cli "my-claude" --critic-cli "my-codex"
-
-# Enhanced with custom CLIs
-python capl_enhanced_cli.py "Complex analysis task" \
+python3 capl_enhanced_cli.py "Your task" \
   --worker-cli "/path/to/claude" \
-  --critic-cli "/path/to/codex" \
-  --iterations 3 \
-  --save
+  --critic-cli "/path/to/codex"
 ```
 
-### Python API Usage
+### Command Line Options
 
-```python
-from capl import create_capl_from_env
-
-# Create CAPL instance
-capl = create_capl_from_env(max_iterations=2)
-
-# Run with your prompt
-prompt = "Write a Python function that implements binary search"
-result = capl.run(prompt, verbose=True)
-
-# Save results
-capl.save_session(result)
-
-# Check results
-print(f"Approved: {result['approved']}")
-print(f"Iterations: {result['total_iterations']}")
-print(f"Final work: {result['final_work']}")
 ```
+python3 capl_enhanced_cli.py [prompt] [options]
 
-### Enhanced Version Usage (With Critical Thinking)
+Arguments:
+  prompt                Task prompt for AI agents (or enter interactively)
 
-Use `capl_enhanced.py` for tasks requiring critical evaluation:
-
-**Command Line:**
-```bash
-# Use enhanced version with critical evaluation
-python capl_enhanced.py "Calculate the gravitational constant and explain its significance"
-
-# With options
-python capl_enhanced.py "Explain blockchain technology" --iterations 3 --save
-```
-
-**Python API:**
-```python
-from capl_enhanced import create_capl_enhanced
-
-# Create enhanced CAPL instance
-capl = create_capl_enhanced(
-    max_iterations=2,
-    enable_search=True  # Enable fact-checking capability
-)
-
-# Run with critical thinking enabled
-prompt = "What is the speed of light and why is it constant?"
-result = capl.run(prompt, verbose=True)
-
-# The worker will:
-# - Critically evaluate critic's feedback
-# - Defend correct information if critic is wrong
-# - Explain what feedback was accepted/rejected
-
-# The critic will:
-# - Identify claims that need verification
-# - Request searches for fact-checking (when implemented)
-# - Provide evidence-based criticism
-```
-
-**When to use Enhanced vs Basic:**
-- **Use Enhanced** for: Factual tasks, controversial topics, code review, complex analyses
-- **Use Basic** for: Simple tasks, creative writing, brainstorming, exploratory work
-
-## Examples
-
-### Basic CAPL Examples
-See `example_usage.py` for comprehensive examples including:
-
-- Basic usage with environment variables
-- Custom API keys
-- Custom model selection
-- Manual agent setup
-- Different types of tasks (code, analysis, creative)
-
-Run examples:
-```bash
-python example_usage.py
-```
-
-### Enhanced CAPL Comparison
-See `example_enhanced_comparison.py` to understand the differences:
-
-- Side-by-side comparison of basic vs enhanced
-- Demonstrations of critical thinking in action
-- Scenarios where worker defends against invalid criticism
-- Examples of critic fact-checking
-
-Run comparison:
-```bash
-python example_enhanced_comparison.py
+Options:
+  --iterations N        Maximum critic iterations (default: 2)
+  --save               Save session results to Markdown file
+  --worker-cli CMD     Worker CLI command (default: "claude")
+  --critic-cli CMD     Critic CLI command (default: "codex")
+  --no-search          Disable fact-checking capability
 ```
 
 ## How It Works
-
-### The CAPL Process
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -328,193 +126,143 @@ python example_enhanced_comparison.py
                   │
                   ▼
 ┌─────────────────────────────────────────────────────────┐
-│ 3. Critic AI (GPT) reviews and provides feedback        │
+│ 3. Critic AI (Codex) reviews and provides feedback      │
+└─────────────────┬───────────────────────────────────────┘
+                  │
+                  ▼
+┌─────────────────────────────────────────────────────────┐
+│ 4. Worker critically evaluates feedback and refines     │
 └─────────────────┬───────────────────────────────────────┘
                   │
                   ▼
           ┌───────┴───────┐
-          │ Approved?     │
+          │ Max iterations│
+          │ reached?      │
           └───────┬───────┘
                   │
         ┌─────────┴─────────┐
+       NO                  YES
         │                   │
-       YES                 NO
-        │                   │
-        │                   ▼
-        │         ┌──────────────────────┐
-        │         │ 4. Worker refines    │
-        │         │    based on feedback │
-        │         └──────────┬───────────┘
-        │                    │
-        │                    │
-        │         ┌──────────┴───────────┐
-        │         │ Max iterations       │
-        │         │ reached?             │
-        │         └──────────┬───────────┘
-        │                    │
-        │              ┌─────┴─────┐
-        │             NO          YES
-        │              │            │
-        │              └────────────┘
-        │                    │
-        ▼                    ▼
-┌─────────────────────────────────────────────────────────┐
-│ 5. Return final work and complete history               │
-└─────────────────────────────────────────────────────────┘
+        └─► Loop back       └─► Display final work
 ```
 
-### Architecture
+## Example Output
 
-- **`CAPLAgent`**: Base class for agents
-- **`ClaudeWorkerAgent`**: Implements worker using Anthropic's Claude
-- **`ChatGPTCriticAgent`**: Implements critic using OpenAI's GPT models
-- **`CAPL`**: Orchestrator managing the refinement loop
+```bash
+$ python3 capl_enhanced_cli.py "explain quantum mechanics in 100 words"
 
-## Configuration
+╭────────────────────────────────────────────────────╮
+│ CAPL Enhanced CLI Session Started                  │
+│ Worker: claude                                     │
+│ Critic: codex                                      │
+│ Max Iterations: 2                                  │
+│ Enhanced with: Critical evaluation & Fact-checking │
+╰────────────────────────────────────────────────────╯
 
-### Environment Variables
+>>> Worker AI: Generating initial work via CLI...
+╭─────────────────────── Initial Work ───────────────────────╮
+│ [Initial explanation of quantum mechanics]                 │
+╰────────────────────────────────────────────────────────────╯
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `ANTHROPIC_API_KEY` | Your Anthropic API key | Yes |
-| `OPENAI_API_KEY` | Your OpenAI API key | Yes |
+>>> Critic AI: Reviewing work via CLI (Iteration 1/2)...
+╭────────────────── Critic Feedback - Iteration 1 ───────────╮
+│ NEEDS WORK: [Detailed feedback with specific suggestions]  │
+╰────────────────────────────────────────────────────────────╯
 
-### Command Line Arguments
+>>> Worker AI: Evaluating feedback and refining via CLI...
+╭────────────────── Refined Work - Iteration 1 ──────────────╮
+│ [Worker's analysis of feedback and improved version]       │
+╰────────────────────────────────────────────────────────────╯
 
-```
-python capl.py [prompt] [options]
+>>> Critic AI: Reviewing work via CLI (Iteration 2/2)...
+╭────────────────── Critic Feedback - Iteration 2 ───────────╮
+│ NEEDS WORK: [More refined feedback]                        │
+╰────────────────────────────────────────────────────────────╯
 
-Arguments:
-  prompt                Task prompt for AI agents
+>>> Worker AI: Evaluating feedback and refining via CLI...
+╭────────────────── Refined Work - Iteration 2 ──────────────╮
+│ [Final refined version with worker's reasoning]            │
+╰────────────────────────────────────────────────────────────╯
 
-Options:
-  --iterations N        Maximum critic iterations (default: 2)
-  --save               Save session results to file
-  --worker-model M     Worker model (default: claude-opus-4-5-20251101)
-  --critic-model M     Critic model (default: gpt-4o)
-```
+╭──────────────────────── Final Work ────────────────────────╮
+│ [Final polished explanation after 2 rounds of refinement]  │
+╰────────────────────────────────────────────────────────────╯
 
-### Available Models
-
-**Worker (Claude):**
-- `claude-opus-4-5-20251101` (recommended)
-- `claude-sonnet-4-5-20250929`
-- Other Claude models
-
-**Critic (OpenAI):**
-- `gpt-4o` (recommended)
-- `gpt-4-turbo`
-- `gpt-4`
-- Other GPT models
-
-## Advanced Usage
-
-### Custom Agent Configuration
-
-```python
-from capl import ClaudeWorkerAgent, ChatGPTCriticAgent, CAPL
-
-# Create custom agents
-worker = ClaudeWorkerAgent(
-    api_key="your_anthropic_key",
-    model="claude-opus-4-5-20251101"
-)
-
-critic = ChatGPTCriticAgent(
-    api_key="your_openai_key",
-    model="gpt-4o"
-)
-
-# Create CAPL with custom settings
-capl = CAPL(
-    worker_agent=worker,
-    critic_agent=critic,
-    max_iterations=3
-)
-
-# Run
-result = capl.run("Your prompt here")
-```
-
-### Accessing Session History
-
-```python
-result = capl.run("Your prompt")
-
-# Iterate through history
-for item in result['history']:
-    print(f"Iteration: {item['iteration']}")
-    print(f"Work: {item['work']}")
-    print(f"Feedback: {item['feedback']}")
-    print(f"Approved: {item['approved']}")
-```
-
-### Programmatic API Keys
-
-```python
-from capl import create_capl_from_env
-
-capl = create_capl_from_env(
-    anthropic_api_key="sk-ant-...",
-    openai_api_key="sk-...",
-    max_iterations=2
-)
+╭─────────────────────────────────────╮
+│ CAPL Enhanced CLI Session Completed │
+╰─────────────────────────────────────╯
 ```
 
 ## Use Cases
 
 CAPL is ideal for tasks that benefit from iterative refinement:
 
-- **Code Generation**: Generate well-tested, documented code
-- **Technical Writing**: Create clear, accurate documentation
-- **Analysis**: Develop thorough, balanced analyses
-- **Design**: Refine system designs and architectures
-- **Creative Writing**: Improve stories, articles, or content
-- **Problem Solving**: Develop robust solutions to complex problems
+- **Technical Writing**: Create clear, accurate explanations and documentation
+- **Code Generation**: Generate well-structured, commented code
+- **Analysis**: Develop thorough, balanced analyses of complex topics
+- **Problem Solving**: Refine solutions through critical evaluation
+- **Creative Writing**: Improve content through constructive feedback
+- **Learning**: Understand topics through multi-perspective refinement
 
-## Output Format
+## Session Files
 
-CAPL provides rich console output with:
-- Color-coded sections for worker and critic
-- Formatted panels for work and feedback
-- Progress indicators
-- Clear approval status
-- Iteration counts
+When using `--save`, CAPL creates a Markdown file containing:
 
-Sessions can be saved to Markdown files containing:
 - Complete iteration history
-- All feedback and refinements
-- Final approved work
+- All feedback exchanges
+- Worker's reasoning for accepting/rejecting feedback
+- Final refined work
 - Metadata and timestamps
+
+Files are saved as: `capl_enhanced_cli_session_YYYYMMDD_HHMMSS.md`
 
 ## Best Practices
 
 1. **Start with 2 iterations**: Usually sufficient for most tasks
 2. **Be specific in prompts**: Clear prompts lead to better results
-3. **Review saved sessions**: Learn from the refinement process
-4. **Experiment with models**: Different models excel at different tasks
-5. **Use verbose mode**: Understand the refinement process
-6. **Save important sessions**: Keep records of valuable outputs
+3. **Review the reasoning**: Pay attention to how worker evaluates feedback
+4. **Save important sessions**: Keep records of valuable refinements
+5. **Adjust iterations**: Use more iterations for complex tasks
 
 ## Troubleshooting
 
-**API Key Errors:**
-- Ensure `.env` file exists and contains valid keys
-- Check that keys have proper permissions
-- Verify no extra spaces or quotes in `.env`
+**CLI tool not found:**
+- Verify `claude` and `codex` are installed and in your PATH
+- Test with `claude --version` and `codex exec --full-auto "test"`
 
-**Model Errors:**
-- Verify model names are correct
-- Check API key has access to specified models
-- Ensure sufficient API credits
+**Permission errors:**
+- Ensure CLI tools are authenticated properly
+- Check that tools can be executed from your terminal
 
-**Import Errors:**
+**Slow responses:**
+- Normal - AI generation takes time, especially for complex tasks
+- Increase timeout if needed (edit `timeout` parameters in script)
+
+**Import errors:**
 - Run `pip install -r requirements.txt`
-- Check Python version (3.8+)
+- Verify Python 3.8+ with `python3 --version`
+
+## Technical Details
+
+### Architecture
+
+- **ClaudeWorkerAgentEnhancedCLI**: Worker agent with critical evaluation
+- **CodexCriticAgentEnhancedCLI**: Critic agent with fact-checking
+- **CAPLEnhancedCLI**: Orchestrator managing the refinement loop
+- Uses `subprocess.run()` to execute CLI commands
+- `codex exec --full-auto` for non-interactive critic execution
+
+### Requirements
+
+See `requirements.txt`:
+- `anthropic>=0.40.0` (for types/reference)
+- `openai>=1.54.0` (for types/reference)
+- `python-dotenv>=1.0.0`
+- `rich>=13.7.0` (console formatting)
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit pull requests or open issues.
+Contributions are welcome! Please submit pull requests or open issues.
 
 ## License
 
@@ -523,13 +271,9 @@ See LICENSE file for details.
 ## Acknowledgments
 
 - Built with [Anthropic's Claude](https://www.anthropic.com/)
-- Built with [OpenAI's GPT](https://openai.com/)
-- Uses [Rich](https://github.com/Textualize/rich) for beautiful console output
-
-## Contact
-
-For questions or support, please open an issue on GitHub.
+- Built with [OpenAI's Codex/ChatGPT](https://openai.com/)
+- Uses [Rich](https://github.com/Textualize/rich) for console output
 
 ---
 
-**CAPL** - Making AI better through collaboration
+**CAPL** - Better AI through collaborative refinement
