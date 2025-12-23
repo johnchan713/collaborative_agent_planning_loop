@@ -36,6 +36,7 @@ def run_with_pty(command: list, input_text: str, timeout: int = 180):
 
     import fcntl
     import time
+    import threading
 
     master, slave = pty.openpty()
 
@@ -51,12 +52,34 @@ def run_with_pty(command: list, input_text: str, timeout: int = 180):
 
         os.close(slave)
 
-        # Write input
-        os.write(master, input_text.encode())
-
-        # Set non-blocking
+        # Set non-blocking for master fd
         flags = fcntl.fcntl(master, fcntl.F_GETFL)
         fcntl.fcntl(master, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+        # Write input in a separate thread to avoid blocking
+        write_complete = threading.Event()
+        write_error = []
+
+        def write_input():
+            try:
+                data = input_text.encode()
+                written = 0
+                while written < len(data):
+                    try:
+                        n = os.write(master, data[written:])
+                        written += n
+                    except OSError as e:
+                        if e.errno == 11:  # EAGAIN
+                            time.sleep(0.01)
+                        else:
+                            raise
+            except Exception as e:
+                write_error.append(e)
+            finally:
+                write_complete.set()
+
+        writer_thread = threading.Thread(target=write_input, daemon=True)
+        writer_thread.start()
 
         # Read output
         output = b""
@@ -75,15 +98,24 @@ def run_with_pty(command: list, input_text: str, timeout: int = 180):
             except OSError as e:
                 if e.errno == 11:  # EAGAIN
                     if process.poll() is not None:
+                        # Process ended, try one more read
+                        time.sleep(0.1)
                         try:
                             chunk = os.read(master, 4096)
-                            output += chunk
+                            if chunk:
+                                output += chunk
                         except:
                             pass
                         break
                     time.sleep(0.1)
                 else:
                     break
+
+        # Wait for write thread to complete
+        writer_thread.join(timeout=5)
+
+        if write_error:
+            raise write_error[0]
 
         os.close(master)
 
