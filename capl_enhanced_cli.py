@@ -265,29 +265,30 @@ class CAPLEnhancedCLI:
                 self.history.append(iteration_data)
                 break
 
-            if iteration < self.max_iterations:
-                self.console.print(f"[bold yellow]>>> Worker AI: Evaluating feedback and refining via CLI...[/bold yellow]")
+            # Worker evaluates feedback and refines (even on final iteration)
+            self.console.print(f"[bold yellow]>>> Worker AI: Evaluating feedback and refining via CLI...[/bold yellow]")
 
-                # Worker critically evaluates and refines
-                if isinstance(self.worker, ClaudeWorkerAgentEnhancedCLI):
-                    refined_work = self.worker.generate(prompt, feedback, current_work)
-                else:
-                    refined_work = self.worker.generate(prompt, feedback)
-
-                current_work = refined_work
-                iteration_data["work"] = current_work
-
-                if verbose:
-                    self.console.print(Panel(
-                        Markdown(current_work),
-                        title=f"[bold green]Refined Work - Iteration {iteration}[/bold green]",
-                        border_style="green"
-                    ))
+            # Worker critically evaluates and refines
+            if isinstance(self.worker, ClaudeWorkerAgentEnhancedCLI):
+                refined_work = self.worker.generate(prompt, feedback, current_work)
             else:
-                self.console.print(f"\n[bold red]Maximum iterations ({self.max_iterations}) reached.[/bold red]")
-                iteration_data["work"] = current_work
+                refined_work = self.worker.generate(prompt, feedback)
+
+            current_work = refined_work
+            iteration_data["work"] = current_work
+
+            if verbose:
+                self.console.print(Panel(
+                    Markdown(current_work),
+                    title=f"[bold green]Refined Work - Iteration {iteration}[/bold green]",
+                    border_style="green"
+                ))
 
             self.history.append(iteration_data)
+
+            # Notify if max iterations reached
+            if iteration >= self.max_iterations:
+                self.console.print(f"\n[bold yellow]Maximum iterations ({self.max_iterations}) reached.[/bold yellow]")
 
         result = {
             "final_work": current_work,
@@ -296,6 +297,14 @@ class CAPLEnhancedCLI:
             "approved": self.history[-1].get("approved", False),
             "timestamp": datetime.now().isoformat()
         }
+
+        # Display final work
+        self.console.print("\n" + "="*80)
+        self.console.print(Panel(
+            Markdown(current_work),
+            title="[bold magenta]Final Work[/bold magenta]",
+            border_style="magenta"
+        ))
 
         self.console.print("\n" + "="*80)
         self.console.print(Panel.fit(
