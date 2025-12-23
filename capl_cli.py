@@ -14,146 +14,6 @@ from rich.panel import Panel
 from rich.markdown import Markdown
 import tempfile
 
-# Try to import pty for TTY support (Unix only)
-try:
-    import pty
-    HAS_PTY = True
-except ImportError:
-    HAS_PTY = False
-
-
-def run_with_pty(command: list, input_text: str, timeout: int = 120):
-    """Run command with pseudo-TTY for tools that require it."""
-    if not HAS_PTY or sys.platform == 'win32':
-        # Fallback to regular subprocess
-        return subprocess.run(
-            command,
-            input=input_text,
-            capture_output=True,
-            text=True,
-            timeout=timeout
-        )
-
-    import fcntl
-    import time
-    import threading
-    import errno as errno_module
-
-    master, slave = pty.openpty()
-
-    try:
-        process = subprocess.Popen(
-            command,
-            stdin=slave,
-            stdout=slave,
-            stderr=subprocess.PIPE,
-            text=False,
-            close_fds=True
-        )
-
-        os.close(slave)
-
-        # Set non-blocking for master fd
-        flags = fcntl.fcntl(master, fcntl.F_GETFL)
-        fcntl.fcntl(master, fcntl.F_SETFL, flags | os.O_NONBLOCK)
-
-        # Write input in a separate thread to avoid blocking
-        write_complete = threading.Event()
-        write_error = []
-
-        def write_input():
-            try:
-                data = input_text.encode()
-                written = 0
-                while written < len(data):
-                    try:
-                        n = os.write(master, data[written:])
-                        written += n
-                    except OSError as e:
-                        # Handle EAGAIN/EWOULDBLOCK on both Linux and macOS
-                        if e.errno in (errno_module.EAGAIN, errno_module.EWOULDBLOCK):
-                            time.sleep(0.01)
-                        else:
-                            raise
-            except Exception as e:
-                write_error.append(e)
-            finally:
-                write_complete.set()
-
-        writer_thread = threading.Thread(target=write_input, daemon=True)
-        writer_thread.start()
-
-        # Read output
-        output = b""
-        start_time = time.time()
-
-        while True:
-            if time.time() - start_time > timeout:
-                process.kill()
-                raise RuntimeError(f"Command timed out after {timeout} seconds")
-
-            try:
-                chunk = os.read(master, 4096)
-                if not chunk:
-                    break
-                output += chunk
-            except OSError as e:
-                # Handle EAGAIN/EWOULDBLOCK on both Linux and macOS
-                if e.errno in (errno_module.EAGAIN, errno_module.EWOULDBLOCK):
-                    if process.poll() is not None:
-                        # Process ended, try one more read
-                        time.sleep(0.1)
-                        try:
-                            chunk = os.read(master, 4096)
-                            if chunk:
-                                output += chunk
-                        except:
-                            pass
-                        break
-                    time.sleep(0.1)
-                else:
-                    break
-
-        # Wait for write thread to complete
-        writer_thread.join(timeout=5)
-
-        if write_error:
-            raise write_error[0]
-
-        os.close(master)
-
-        try:
-            _, stderr = process.communicate(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            _, stderr = process.communicate()
-
-        class Result:
-            def __init__(self, stdout, stderr, returncode):
-                self.stdout = stdout
-                self.stderr = stderr if stderr else ""
-                self.returncode = returncode
-
-        return Result(
-            output.decode('utf-8', errors='replace').strip(),
-            stderr.decode('utf-8', errors='replace') if stderr else "",
-            process.returncode
-        )
-
-    except Exception as e:
-        if 'master' in locals():
-            try:
-                os.close(master)
-            except:
-                pass
-        if 'process' in locals():
-            try:
-                process.kill()
-            except:
-                pass
-        raise
-
-
 class CAPLAgentCLI:
     """Base class for CLI-based CAPL agents."""
 
@@ -255,8 +115,13 @@ If the work needs improvement, start your response with "NEEDS WORK:"
 Be thorough but constructive in your criticism."""
 
         try:
-            # Call Codex CLI with TTY support (codex requires terminal)
-            result = run_with_pty([self.cli_command], critique_prompt, timeout=120)
+            # Call Codex CLI with exec --full-auto for non-interactive execution
+            result = subprocess.run(
+                [self.cli_command, "exec", "--full-auto", critique_prompt],
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
 
             if result.returncode != 0:
                 raise RuntimeError(f"Codex CLI failed: {result.stderr}")
