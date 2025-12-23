@@ -37,6 +37,7 @@ def run_with_pty(command: list, input_text: str, timeout: int = 180):
     import fcntl
     import time
     import threading
+    import errno as errno_module
 
     master, slave = pty.openpty()
 
@@ -69,7 +70,8 @@ def run_with_pty(command: list, input_text: str, timeout: int = 180):
                         n = os.write(master, data[written:])
                         written += n
                     except OSError as e:
-                        if e.errno == 11:  # EAGAIN
+                        # Handle EAGAIN/EWOULDBLOCK on both Linux and macOS
+                        if e.errno in (errno_module.EAGAIN, errno_module.EWOULDBLOCK):
                             time.sleep(0.01)
                         else:
                             raise
@@ -96,7 +98,8 @@ def run_with_pty(command: list, input_text: str, timeout: int = 180):
                     break
                 output += chunk
             except OSError as e:
-                if e.errno == 11:  # EAGAIN
+                # Handle EAGAIN/EWOULDBLOCK on both Linux and macOS
+                if e.errno in (errno_module.EAGAIN, errno_module.EWOULDBLOCK):
                     if process.poll() is not None:
                         # Process ended, try one more read
                         time.sleep(0.1)
